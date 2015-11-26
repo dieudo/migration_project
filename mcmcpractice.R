@@ -1,41 +1,44 @@
-setwd("E:/Downloads/Courses/CUNY/SPS/Git/IS 604 Simulation and Modeling techniques/Final Project/migration data")
-
-#library(Quandl)
-library(plyr)
 library(dplyr)
-library(reshape2)
 
+# set working directory interactively (hacky,  but cross-platform solution)
+setwd(dirname(file.choose()))
+
+# load migration data
 mig <- read.csv("migrationflat.csv")
 
-mig <- filter(mig,!(destination %in% c("Puerto Rico","U.S..Island.Area",
-                                       "Foreign.Country","Total")))
-mig <- filter(mig,source != "Puerto Rico")
+# remove non-states
+mig <- filter(mig, !(destination %in% c("Puerto Rico", "U.S..Island.Area",
+                                       "Foreign.Country", "Total")))
+mig <- filter(mig,  source != "Puerto Rico")
 
+# map states to source/destination regions
 states <- read.csv("states.csv")
 
-mig <- merge(mig,states,by.x="source",by.y="State")
-mig <- rename(mig,c("Region" = "src.region"))
-mig <- merge(mig,states,by.x="destination",by.y="State")
-mig <- rename(mig,c("Region" = "dest.region"))
+mig <- merge(mig,  states,  by.x="source",  by.y="State")
+mig <- rename(mig, src.region = Region)
+mig <- merge(mig, states, by.x="destination", by.y="State")
+mig <- rename(mig, dest.region = Region)
 
-migreg <- mig %>% group_by(src.region,dest.region,year) %>%
+# aggregate
+migreg <- mig %>% group_by(src.region, dest.region, year) %>%
   summarize(migration = sum(migration))
 
+# incorporating employment data into transition matrix
 e <- read.csv("employment.csv")
 
 pmatrix <- function(yr){
-  
-  mignum <- migreg %>% filter(year == yr) %>% select(-year)
-  mignum <- dcast(mignum, src.region~dest.region, value.var="migration")
-  mignum <- as.matrix(mignum[,2:5])
+
+  mignum <- migreg %>% filter(year == yr) %>% select(-year) %>%
+    reshape2::dcast(src.region~dest.region, value.var="migration")
+  mignum <- as.matrix(mignum[, 2:5])
   rownames(mignum) <- colnames(mignum)
-  
+
   for(row in 1:4){
-    mignum[row,] <- mignum[row,]/sum(mignum[row,])
+    mignum[row,] <- mignum[row,] / sum(mignum[row,])
   }
-  
-  #mignum <- apply(mignum,1,function(x) return(x/sum(x)))
-  
+
+  #mignum <- apply(mignum, 1, function(x) return(x/sum(x)))
+
   return(mignum)
 }
 
