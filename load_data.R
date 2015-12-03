@@ -1,8 +1,5 @@
 library(dplyr)
 
-# set working directory interactively (hacky,  but cross-platform solution)
-setwd(dirname(file.choose()))
-
 # load migration data
 mig <- read.csv("migrationflat.csv")
 
@@ -26,7 +23,8 @@ migreg <- mig %>% group_by(src.region, dest.region, year) %>%
 # incorporating employment data into transition matrix
 e <- read.csv("employment.csv")
 
-pmatrix <- function(yr){
+# transition matrix w/probs based on empirical pop flow
+pmatrix.pop <- function(yr){
 
   mignum <- migreg %>% filter(year == yr) %>% select(-year) %>%
     reshape2::dcast(src.region~dest.region, value.var="migration")
@@ -41,7 +39,3 @@ pmatrix <- function(yr){
 
   return(mignum)
 }
-
-
-
-
